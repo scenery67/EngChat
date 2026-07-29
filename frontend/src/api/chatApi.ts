@@ -1,5 +1,8 @@
 // /api/chat 호출 함수 / Chat API client
 // Cloudflare Pages Function이 프론트엔드와 같은 도메인에서 서빙되므로 상대경로로 호출합니다.
+import type { LevelId } from "../../shared/levels";
+import type { ModelKey } from "../../shared/models";
+
 export type ChatTurn = { role: "user" | "assistant"; content: string };
 
 interface ChatSuccessResponse {
@@ -13,12 +16,14 @@ interface ChatErrorResponse {
 export async function sendChatMessage(
   topicId: string,
   history: ChatTurn[],
-  userMessage: string
+  userMessage: string,
+  levelId: LevelId,
+  modelKey: ModelKey
 ): Promise<string> {
   const response = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ topicId, history, userMessage }),
+    body: JSON.stringify({ topicId, history, userMessage, levelId, modelKey }),
   });
 
   if (!response.ok) {

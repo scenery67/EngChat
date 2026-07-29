@@ -1,0 +1,81 @@
+// 설정 화면 - 난이도(학년) / 고급 모델 / TTS 말하기 속도
+import { LEVELS } from "../../shared/levels";
+import { useSettings } from "../settings/useSettings";
+
+interface SettingsScreenProps {
+  onExit: () => void;
+}
+
+export function SettingsScreen({ onExit }: SettingsScreenProps) {
+  const { settings, update } = useSettings();
+
+  return (
+    <div className="flex flex-col items-center gap-6 p-8 min-h-screen">
+      <div className="w-full max-w-xl flex items-center">
+        <button type="button" onClick={onExit} className="text-blue-500 underline">
+          ← 뒤로 가기
+        </button>
+      </div>
+      <h1 className="text-2xl font-bold text-gray-800">설정</h1>
+
+      <section className="w-full max-w-xl">
+        <h2 className="font-bold text-gray-700 mb-2">난이도 (학년)</h2>
+        <div className="flex flex-col gap-2 max-h-80 overflow-y-auto pr-1">
+          {LEVELS.map((level) => {
+            const selected = settings.levelId === level.id;
+            return (
+              <button
+                key={level.id}
+                type="button"
+                onClick={() => update({ levelId: level.id })}
+                className={`text-left p-3 rounded-2xl border-4 transition-colors ${
+                  selected ? "border-blue-400 bg-blue-50" : "border-gray-200 bg-white"
+                }`}
+              >
+                <p className="font-bold text-gray-800">{level.labelKo}</p>
+                <p className="text-sm text-gray-500">{level.description}</p>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="w-full max-w-xl flex items-center justify-between p-4 rounded-2xl bg-white border-4 border-gray-200">
+        <div>
+          <p className="font-bold text-gray-800">고급 모델 사용</p>
+          <p className="text-sm text-gray-500">응답 품질이 더 좋아지지만 비용이 올라가요</p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={settings.modelKey === "advanced"}
+          onClick={() =>
+            update({ modelKey: settings.modelKey === "advanced" ? "basic" : "advanced" })
+          }
+          className={`w-14 h-8 rounded-full relative transition-colors ${
+            settings.modelKey === "advanced" ? "bg-blue-500" : "bg-gray-300"
+          }`}
+        >
+          <span
+            className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white transition-transform ${
+              settings.modelKey === "advanced" ? "translate-x-6" : ""
+            }`}
+          />
+        </button>
+      </section>
+
+      <section className="w-full max-w-xl p-4 rounded-2xl bg-white border-4 border-gray-200">
+        <p className="font-bold text-gray-800 mb-2">말하기 속도: {settings.ttsRate.toFixed(2)}x</p>
+        <input
+          type="range"
+          min={0.5}
+          max={1.5}
+          step={0.05}
+          value={settings.ttsRate}
+          onChange={(e) => update({ ttsRate: Number(e.target.value) })}
+          className="w-full"
+        />
+      </section>
+    </div>
+  );
+}

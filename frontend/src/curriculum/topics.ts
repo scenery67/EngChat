@@ -1,5 +1,5 @@
 // 주제 목록 / Topic list
-// functions/_lib/systemPrompt.ts 의 주제 id와 반드시 동일하게 유지해야 합니다.
+// worker/systemPrompt.ts 의 주제 id와 반드시 동일하게 유지해야 합니다.
 
 export interface Topic {
   id: string;

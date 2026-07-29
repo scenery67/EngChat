@@ -6,6 +6,7 @@ import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 import { useSpeechSynthesis } from "../hooks/useSpeechSynthesis";
 import { sendChatMessage, type ChatTurn } from "../api/chatApi";
 import { TOPICS } from "../curriculum/topics";
+import { useSettings } from "../settings/useSettings";
 
 interface ChatScreenProps {
   topicId: string;
@@ -14,6 +15,7 @@ interface ChatScreenProps {
 
 export function ChatScreen({ topicId, onExit }: ChatScreenProps) {
   const topic = TOPICS.find((t) => t.id === topicId);
+  const { settings } = useSettings();
   const [history, setHistory] = useState<ChatTurn[]>([]);
   const [subtitle, setSubtitle] = useState("마이크를 누르고 있는 동안 영어로 말해보세요!");
   const [isSending, setIsSending] = useState(false);
@@ -21,7 +23,7 @@ export function ChatScreen({ topicId, onExit }: ChatScreenProps) {
 
   const { isSupported: isSttSupported, isListening, startListening, stopListening } =
     useSpeechRecognition();
-  const { isSupported: isTtsSupported, isSpeaking, speak } = useSpeechSynthesis();
+  const { isSupported: isTtsSupported, isSpeaking, speak } = useSpeechSynthesis(settings.ttsRate);
 
   const handleUserMessage = useCallback(
     async (userMessage: string) => {
@@ -29,7 +31,13 @@ export function ChatScreen({ topicId, onExit }: ChatScreenProps) {
       setSubtitle(`나: ${userMessage}`);
       setIsSending(true);
       try {
-        const reply = await sendChatMessage(topicId, history, userMessage);
+        const reply = await sendChatMessage(
+          topicId,
+          history,
+          userMessage,
+          settings.levelId,
+          settings.modelKey
+        );
         setHistory((prev) => [
           ...prev,
           { role: "user", content: userMessage },
@@ -43,7 +51,7 @@ export function ChatScreen({ topicId, onExit }: ChatScreenProps) {
         setIsSending(false);
       }
     },
-    [history, speak, topicId]
+    [history, speak, topicId, settings.levelId, settings.modelKey]
   );
 
   const handleMicPress = () => {

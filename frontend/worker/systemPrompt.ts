@@ -1,20 +1,21 @@
 // 주제별 시스템 프롬프트 정의 / Topic-based system prompt definitions
-// 초등 3학년(만 9~10세) 아이가 영어 튜터 캐릭터와 대화하기 위한 프롬프트 모음입니다.
+// 초등학생~고등학생 아이가 영어 튜터 캐릭터와 대화하기 위한 프롬프트 모음입니다.
+import { getLevelById, DEFAULT_LEVEL_ID } from "../shared/levels";
 
 export interface Topic {
   id: string;
   titleKo: string;
   titleEn: string;
-  level: 1 | 2 | 3;
+  level: 1 | 2 | 3; // 주제 자체의 소재 복잡도 (학년 난이도 levelId와는 다른 개념)
 }
 
 interface TopicWithPrompt extends Topic {
   scopeAndPersona: string;
 }
 
-// 모든 주제에 공통으로 적용되는 안전 규칙 + 튜터링 스타일
+// 모든 주제/난이도에 공통으로 적용되는 안전 규칙 + 튜터링 매너
 // (개인정보 보호, recast 방식 교정 등 - 아이 대상 서비스이므로 반드시 유지)
-const COMMON_RULES = `
+const SAFETY_AND_MANNER = `
 ## Safety rules
 - NEVER ask for or store the child's full address, phone number, school name, or other personal
   identifying information.
@@ -23,20 +24,17 @@ const COMMON_RULES = `
 - If the conversation drifts into inappropriate territory, redirect immediately to a safe topic.
 - Never claim to be a real person or give real-world advice (medical, financial, etc).
 
-## Tutoring style
-- The child's English level is beginner (3rd grade elementary, age 9-10). Use SHORT sentences
-  (5-8 words), simple present/past tense, and common vocabulary.
-- After the child responds, briefly acknowledge what they said, then ask ONE simple follow-up
-  question.
+## Tutoring manner
+- After the child responds, briefly acknowledge what they said, then ask ONE follow-up question.
 - If the child makes a grammar mistake, do NOT correct them directly. Instead, naturally repeat
   back a corrected version within your own sentence (recast).
-- Keep every response to 1-3 short sentences. End with a question when possible.
+- Keep every response to 1-3 sentences. End with a question when possible.
 - Use encouraging phrases often: "Great job!", "That's awesome!", "Good try!"
 - Respond in plain English text only. No markdown, no emojis unless natural.
 `.trim();
 
 const PERSONA = `You are Buddy, a friendly cartoon animal character who is video-chatting with a
-Korean elementary school 3rd grader to practice English conversation. You speak ONLY in English.`;
+Korean student to practice English conversation. You speak ONLY in English.`;
 
 const TOPICS: Record<string, TopicWithPrompt> = {
   self_introduction: {
@@ -96,11 +94,12 @@ else, gently guide the conversation back to hobbies.`,
   },
 };
 
-// 주제 ID로 전체 시스템 프롬프트 생성 (없으면 null)
-export function buildSystemPrompt(topicId: string): string | null {
+// 주제 ID + 학년 난이도 ID로 전체 시스템 프롬프트 생성 (주제가 없으면 null)
+export function buildSystemPrompt(topicId: string, levelId: string): string | null {
   const topic = TOPICS[topicId];
   if (!topic) return null;
-  return `${PERSONA}\n\n${topic.scopeAndPersona}\n\n${COMMON_RULES}`;
+  const level = getLevelById(levelId || DEFAULT_LEVEL_ID);
+  return `${PERSONA}\n\n${topic.scopeAndPersona}\n\n## Language level\n${level.tutoringStyle}\n\n${SAFETY_AND_MANNER}`;
 }
 
 // 프론트엔드 주제 선택 화면에 내려줄 목록
