@@ -1,5 +1,7 @@
 # 영어 화상대화 학습 웹앱 "EngChat" (개인 프로토타입)
 
+**배포된 사이트**: https://engchat.kkpark67.workers.dev/
+
 AI 캐릭터와 화상대화를 하는 느낌으로 영어 회화를 연습하는 웹앱입니다. 마이크로 말하면
 브라우저(또는 OpenAI TTS)가 음성을 텍스트로 바꾸고, OpenAI API가 튜터 역할로 답변을
 만들고, 그 답변을 다시 음성으로 들려줍니다. 캐릭터는 대기/듣는 중/말하는 중 상태에 따라
@@ -113,13 +115,13 @@ GitHub Actions는 쓰지 않습니다. `main` 브랜치에 push하면 Cloudflare
    ```
    **주의**: Cloudflare의 자동 배포는 이 마이그레이션 명령을 대신 실행해주지 않습니다.
    `feedback` 테이블 스키마를 바꿀 때마다 `--remote`를 로컬에서 직접 실행해야 합니다.
-4. `git push`하면 자동으로 빌드+배포됩니다. 배포 주소는 Cloudflare 대시보드에서 확인
-   (`*.workers.dev` 기본 제공, 계정 서브도메인은 대시보드에서 한 번 변경 가능, 원하면
-   커스텀 도메인 연결도 가능).
+4. `git push`하면 자동으로 빌드+배포됩니다. 현재 배포 주소는
+   **https://engchat.kkpark67.workers.dev/** 입니다 (`*.workers.dev` 기본 제공,
+   계정 서브도메인은 대시보드에서 한 번 변경 가능, 원하면 커스텀 도메인 연결도 가능).
 
 ### 피드백 확인 방법
 
-- 배포된 사이트의 `/admin`에 접속 → 등록한 `ADMIN_PASSWORD` 입력
+- https://engchat.kkpark67.workers.dev/admin 접속 → 등록한 `ADMIN_PASSWORD` 입력
 - 또는 CLI로: `npx wrangler d1 execute engchat-feedback --remote --command "SELECT * FROM feedback ORDER BY id DESC"`
 
 ## 참고 사항
