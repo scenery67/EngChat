@@ -57,8 +57,13 @@ const SAFETY_AND_MANNER = `
 - Respond in plain English text only. No markdown, no emojis unless natural.
 `.trim();
 
-const PERSONA = `You are Buddy, a friendly cartoon animal character who is video-chatting with a
+const DEFAULT_AI_NAME = "Buddy";
+
+function buildPersona(aiName: string): string {
+  const name = aiName.trim() || DEFAULT_AI_NAME;
+  return `You are ${name}, a friendly cartoon animal character who is video-chatting with a
 Korean student to practice English conversation. You speak ONLY in English.`;
+}
 
 const TOPICS: Record<string, TopicWithPrompt> = {
   self_introduction: {
@@ -127,7 +132,7 @@ export const STARTER_ANGLES: string[] = [
   "Start with a genuine, specific-sounding compliment, then ask a question.",
   "Start by playfully guessing something about them related to the topic, then ask if you're right.",
   "Start with an enthusiastic greeting and jump straight into an interesting question.",
-  "Start by sharing something you (Buddy) supposedly like about the topic, then ask about theirs.",
+  "Start by sharing something you supposedly like about the topic, then ask about theirs.",
   "Start with a light, silly joke or fun exclamation related to the topic, then ask a question.",
 ];
 
@@ -136,15 +141,17 @@ export const STARTER_ANGLES: string[] = [
 export function buildSystemPrompt(
   topicId: string,
   levelId: string,
-  starterAngle?: string | null
+  starterAngle?: string | null,
+  aiName?: string
 ): string | null {
   const topic = TOPICS[topicId];
   if (!topic) return null;
   const level = getLevelById(levelId || DEFAULT_LEVEL_ID);
+  const persona = buildPersona(aiName ?? DEFAULT_AI_NAME);
   const starterSection = starterAngle
     ? `\n\n## This turn's opening style\n${starterAngle}`
     : "";
-  return `${PERSONA}\n\n${NATIVE_STYLE_GUIDE}\n\n${topic.scopeAndPersona}\n\n## Language level\n${level.tutoringStyle}${starterSection}\n\n${SAFETY_AND_MANNER}`;
+  return `${persona}\n\n${NATIVE_STYLE_GUIDE}\n\n${topic.scopeAndPersona}\n\n## Language level\n${level.tutoringStyle}${starterSection}\n\n${SAFETY_AND_MANNER}`;
 }
 
 // 프론트엔드 주제 선택 화면에 내려줄 목록

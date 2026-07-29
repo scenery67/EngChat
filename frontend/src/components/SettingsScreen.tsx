@@ -1,6 +1,7 @@
-// 설정 화면 - 난이도(학년) / 고급 모델 / 음성 목소리 / TTS 말하기 속도
+// 설정 화면 - AI 이름 / 난이도(학년) / 고급 모델 / 음성 목소리 / TTS 말하기 속도
 import { LEVELS } from "../../shared/levels";
 import { TTS_VOICE_LABELS, type TtsVoiceKey } from "../../shared/ttsVoices";
+import { AI_NAME_MAX_LENGTH } from "../settings/types";
 import { useSettings } from "../settings/useSettings";
 import { useVoices } from "../hooks/useVoices";
 import { useSpeechSynthesis } from "../hooks/useSpeechSynthesis";
@@ -25,6 +26,19 @@ export function SettingsScreen({ onExit }: SettingsScreenProps) {
         </button>
       </div>
       <h1 className="text-2xl font-bold text-gray-800">설정</h1>
+
+      <section className="w-full max-w-xl p-4 rounded-2xl bg-white border-4 border-gray-200">
+        <p className="font-bold text-gray-800 mb-2">AI 이름</p>
+        <input
+          type="text"
+          value={settings.aiName}
+          onChange={(e) => update({ aiName: e.target.value.slice(0, AI_NAME_MAX_LENGTH) })}
+          maxLength={AI_NAME_MAX_LENGTH}
+          placeholder="Buddy"
+          className="w-full p-3 rounded-2xl border-4 border-gray-200"
+        />
+        <p className="text-sm text-gray-500 mt-1">대화 상대 캐릭터의 이름이에요</p>
+      </section>
 
       <section className="w-full max-w-xl">
         <h2 className="font-bold text-gray-700 mb-2">난이도 (학년)</h2>

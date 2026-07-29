@@ -31,6 +31,7 @@ interface ChatRequestBody {
   userMessage: string;
   levelId?: string;
   modelKey?: string;
+  aiName?: string;
 }
 
 // 외부 입력값은 반드시 검증합니다 (보안 원칙) / Always validate external input.
@@ -59,6 +60,9 @@ function isValidChatRequest(body: unknown): body is ChatRequestBody {
   if (b.modelKey !== undefined && b.modelKey !== "basic" && b.modelKey !== "advanced") {
     return false;
   }
+  if (b.aiName !== undefined && (typeof b.aiName !== "string" || b.aiName.length > 30)) {
+    return false;
+  }
   return true;
 }
 
@@ -81,14 +85,14 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
     return jsonResponse({ error: "잘못된 요청 형식입니다." }, 400);
   }
 
-  const { topicId, history, userMessage, levelId, modelKey } = payload;
+  const { topicId, history, userMessage, levelId, modelKey, aiName } = payload;
 
   const resolvedLevelId = isValidLevelId(levelId) ? levelId : DEFAULT_LEVEL_ID;
   // 대화 첫 턴(history 비어있음)에는 매번 다른 "시작 각도"를 랜덤으로 골라 주입해서
   // 대화 시작 문장이 항상 똑같이 수렴하지 않도록 합니다.
   const starterAngle =
     history.length === 0 ? STARTER_ANGLES[Math.floor(Math.random() * STARTER_ANGLES.length)] : null;
-  const systemPrompt = buildSystemPrompt(topicId, resolvedLevelId, starterAngle);
+  const systemPrompt = buildSystemPrompt(topicId, resolvedLevelId, starterAngle, aiName);
   if (!systemPrompt) {
     return jsonResponse({ error: "존재하지 않는 주제입니다." }, 400);
   }

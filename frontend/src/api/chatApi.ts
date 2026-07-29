@@ -18,12 +18,13 @@ export async function sendChatMessage(
   history: ChatTurn[],
   userMessage: string,
   levelId: LevelId,
-  modelKey: ModelKey
+  modelKey: ModelKey,
+  aiName: string
 ): Promise<string> {
   const response = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ topicId, history, userMessage, levelId, modelKey }),
+    body: JSON.stringify({ topicId, history, userMessage, levelId, modelKey, aiName }),
   });
 
   if (!response.ok) {

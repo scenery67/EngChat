@@ -47,14 +47,15 @@ export function ChatScreen({ topicId, onExit }: ChatScreenProps) {
           history,
           userMessage,
           settings.levelId,
-          settings.modelKey
+          settings.modelKey,
+          settings.aiName
         );
         setHistory((prev) => [
           ...prev,
           { role: "user", content: userMessage },
           { role: "assistant", content: reply },
         ]);
-        setSubtitle(`Buddy: ${reply}`);
+        setSubtitle(`${settings.aiName}: ${reply}`);
         speak(reply);
       } catch (error) {
         setErrorMessage(error instanceof Error ? error.message : "오류가 발생했습니다.");
@@ -62,7 +63,7 @@ export function ChatScreen({ topicId, onExit }: ChatScreenProps) {
         setIsSending(false);
       }
     },
-    [history, speak, topicId, settings.levelId, settings.modelKey]
+    [history, speak, topicId, settings.levelId, settings.modelKey, settings.aiName]
   );
 
   const beginListening = () => {
