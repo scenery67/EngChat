@@ -11,6 +11,8 @@ interface SettingsScreenProps {
 export function SettingsScreen({ onExit }: SettingsScreenProps) {
   const { settings, update } = useSettings();
   const voices = useVoices();
+  const englishVoices = voices.filter((voice) => voice.lang.toLowerCase().startsWith("en"));
+  const otherVoices = voices.filter((voice) => !voice.lang.toLowerCase().startsWith("en"));
   const { speak } = useSpeechSynthesis(settings.ttsRate, settings.voiceURI);
 
   return (
@@ -82,33 +84,54 @@ export function SettingsScreen({ onExit }: SettingsScreenProps) {
       </section>
 
       <section className="w-full max-w-xl p-4 rounded-2xl bg-white border-4 border-gray-200">
-        <p className="font-bold text-gray-800 mb-2">음성 목소리</p>
+        <p className="font-bold text-gray-800 mb-2">음성 목소리 ({voices.length}개 사용 가능)</p>
         {voices.length === 0 ? (
           <p className="text-sm text-gray-500">
             이 브라우저에서는 목소리를 선택할 수 없어요. 기본 목소리로 재생됩니다.
           </p>
         ) : (
-          <div className="flex gap-2">
-            <select
-              value={settings.voiceURI ?? ""}
-              onChange={(e) => update({ voiceURI: e.target.value || null })}
-              className="flex-1 p-3 rounded-2xl border-4 border-gray-200"
-            >
-              <option value="">기본 목소리</option>
-              {voices.map((voice) => (
-                <option key={voice.voiceURI} value={voice.voiceURI}>
-                  {voice.name} ({voice.lang})
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => speak("Hello! Nice to meet you!")}
-              className="px-4 py-3 rounded-2xl bg-blue-500 text-white font-bold active:scale-95"
-            >
-              들어보기
-            </button>
-          </div>
+          <>
+            <div className="flex gap-2">
+              <select
+                value={settings.voiceURI ?? ""}
+                onChange={(e) => update({ voiceURI: e.target.value || null })}
+                className="flex-1 p-3 rounded-2xl border-4 border-gray-200"
+              >
+                <option value="">기본 목소리</option>
+                {englishVoices.length > 0 && (
+                  <optgroup label="영어">
+                    {englishVoices.map((voice) => (
+                      <option key={voice.voiceURI} value={voice.voiceURI}>
+                        {voice.name} ({voice.lang})
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {otherVoices.length > 0 && (
+                  <optgroup label="기타 언어 (영어 학습용으로는 추천하지 않아요)">
+                    {otherVoices.map((voice) => (
+                      <option key={voice.voiceURI} value={voice.voiceURI}>
+                        {voice.name} ({voice.lang})
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+              <button
+                type="button"
+                onClick={() => speak("Hello! Nice to meet you!")}
+                className="px-4 py-3 rounded-2xl bg-blue-500 text-white font-bold active:scale-95"
+              >
+                들어보기
+              </button>
+            </div>
+            {englishVoices.length <= 2 && (
+              <p className="text-sm text-gray-400 mt-2">
+                영어 목소리가 적게 보이면 기기 설정 &gt; 접근성 &gt; 텍스트 음성 변환에서 음성
+                데이터를 추가로 설치하면 더 늘어날 수 있어요.
+              </p>
+            )}
+          </>
         )}
       </section>
     </div>
