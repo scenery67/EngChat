@@ -5,14 +5,19 @@ import { isValidLevelId, DEFAULT_LEVEL_ID } from "../shared/levels";
 import { resolveModel } from "../shared/models";
 
 // wrangler.toml에서 실제 쓰는 메서드만 최소로 선언 (별도 타입 패키지 미사용 컨벤션 유지)
+interface D1PreparedStatement {
+  run(): Promise<unknown>;
+  all<T = unknown>(): Promise<{ results: T[] }>;
+}
 interface D1Database {
   prepare(query: string): {
-    bind(...values: unknown[]): { run(): Promise<unknown> };
+    bind(...values: unknown[]): D1PreparedStatement;
   };
 }
 
 interface Env {
   OPENAI_API_KEY: string;
+  ADMIN_PASSWORD: string;
   ASSETS: { fetch: (request: Request) => Promise<Response> };
   engchat_feedback: D1Database;
 }
@@ -164,6 +169,83 @@ async function handleFeedback(request: Request, env: Env): Promise<Response> {
   }
 }
 
+// /admin 보호용 HTTP Basic Auth. 아이디는 검사하지 않고 비밀번호만 ADMIN_PASSWORD와 비교합니다.
+function isAdminAuthorized(request: Request, env: Env): boolean {
+  const authHeader = request.headers.get("Authorization");
+  if (!authHeader || !authHeader.startsWith("Basic ")) return false;
+
+  let decoded: string;
+  try {
+    decoded = atob(authHeader.slice("Basic ".length));
+  } catch {
+    return false;
+  }
+
+  const separatorIndex = decoded.indexOf(":");
+  const password = separatorIndex === -1 ? decoded : decoded.slice(separatorIndex + 1);
+  return password.length > 0 && password === env.ADMIN_PASSWORD;
+}
+
+function requireBasicAuth(): Response {
+  return new Response("Authentication required", {
+    status: 401,
+    headers: { "WWW-Authenticate": 'Basic realm="Admin"' },
+  });
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+async function handleAdmin(request: Request, env: Env): Promise<Response> {
+  if (!isAdminAuthorized(request, env)) {
+    return requireBasicAuth();
+  }
+
+  const { results } = await env.engchat_feedback
+    .prepare("SELECT id, message, created_at FROM feedback ORDER BY id DESC LIMIT 200")
+    .bind()
+    .all<{ id: number; message: string; created_at: string }>();
+
+  const rows = results
+    .map(
+      (row) => `<tr>
+        <td>${row.id}</td>
+        <td>${escapeHtml(row.created_at)}</td>
+        <td style="white-space: pre-wrap;">${escapeHtml(row.message)}</td>
+      </tr>`
+    )
+    .join("");
+
+  const html = `<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>피드백 목록</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 24px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; vertical-align: top; }
+    th { background: #f4f4f4; }
+  </style>
+</head>
+<body>
+  <h1>피드백 목록 (${results.length}건)</h1>
+  <table>
+    <thead><tr><th>ID</th><th>보낸 시각</th><th>내용</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+</body>
+</html>`;
+
+  return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -173,6 +255,9 @@ export default {
     }
     if (url.pathname === "/api/feedback" && request.method === "POST") {
       return handleFeedback(request, env);
+    }
+    if (url.pathname === "/admin" && request.method === "GET") {
+      return handleAdmin(request, env);
     }
 
     return env.ASSETS.fetch(request);
