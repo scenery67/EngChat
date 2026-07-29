@@ -236,6 +236,13 @@ async function handleAdminLogin(request: Request, env: Env): Promise<Response> {
   const password = formData?.get("password");
 
   if (typeof password !== "string" || password !== env.ADMIN_PASSWORD) {
+    // 비밀번호 원문은 로그에 남기지 않고, 길이만 남겨 공백/오타 여부를 진단합니다.
+    console.error(
+      "[admin] Login failed. input length:",
+      typeof password === "string" ? password.length : "not-a-string",
+      "expected length:",
+      env.ADMIN_PASSWORD?.length ?? "unset"
+    );
     return adminLoginPage("비밀번호가 틀렸습니다.");
   }
 
