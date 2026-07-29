@@ -117,7 +117,7 @@ export function SettingsScreen({ onExit }: SettingsScreenProps) {
             <select
               value={settings.openAiVoice}
               onChange={(e) => update({ openAiVoice: e.target.value as TtsVoiceKey })}
-              className="flex-1 p-3 rounded-2xl border-4 border-gray-200"
+              className="flex-1 min-w-0 p-3 rounded-2xl border-4 border-gray-200"
             >
               {Object.entries(TTS_VOICE_LABELS).map(([key, label]) => (
                 <option key={key} value={key}>
@@ -128,7 +128,7 @@ export function SettingsScreen({ onExit }: SettingsScreenProps) {
             <button
               type="button"
               onClick={() => speak("Hello! Nice to meet you!")}
-              className="px-4 py-3 rounded-2xl bg-blue-500 text-white font-bold active:scale-95"
+              className="flex-shrink-0 px-4 py-3 rounded-2xl bg-blue-500 text-white font-bold active:scale-95"
             >
               들어보기
             </button>
@@ -143,7 +143,7 @@ export function SettingsScreen({ onExit }: SettingsScreenProps) {
               <select
                 value={settings.voiceURI ?? ""}
                 onChange={(e) => update({ voiceURI: e.target.value || null })}
-                className="flex-1 p-3 rounded-2xl border-4 border-gray-200"
+                className="flex-1 min-w-0 p-3 rounded-2xl border-4 border-gray-200"
               >
                 <option value="">기본 목소리</option>
                 {voices.map((voice) => (
@@ -155,7 +155,7 @@ export function SettingsScreen({ onExit }: SettingsScreenProps) {
               <button
                 type="button"
                 onClick={() => speak("Hello! Nice to meet you!")}
-                className="px-4 py-3 rounded-2xl bg-blue-500 text-white font-bold active:scale-95"
+                className="flex-shrink-0 px-4 py-3 rounded-2xl bg-blue-500 text-white font-bold active:scale-95"
               >
                 들어보기
               </button>
