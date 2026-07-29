@@ -6,9 +6,15 @@ interface AvatarCharacterProps {
 }
 
 const STATE_LABEL: Record<AvatarState, string> = {
-  idle: "대기 중",
-  listening: "듣고 있어요",
-  speaking: "말하고 있어요",
+  idle: "🎤 눌러서 말해보세요",
+  listening: "👂 듣고 있어요",
+  speaking: "🗣️ 말하고 있어요",
+};
+
+const STATE_LABEL_COLOR: Record<AvatarState, string> = {
+  idle: "text-gray-600",
+  listening: "text-red-600",
+  speaking: "text-blue-600",
 };
 
 export function AvatarCharacter({ state }: AvatarCharacterProps) {
@@ -35,7 +41,7 @@ export function AvatarCharacter({ state }: AvatarCharacterProps) {
           <div className="absolute -bottom-3 right-2 text-3xl animate-pulse">🎤</div>
         )}
       </div>
-      <p className="text-sm text-gray-500">{STATE_LABEL[state]}</p>
+      <p className={`text-lg font-bold ${STATE_LABEL_COLOR[state]}`}>{STATE_LABEL[state]}</p>
     </div>
   );
 }

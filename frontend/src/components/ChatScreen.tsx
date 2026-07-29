@@ -18,7 +18,7 @@ export function ChatScreen({ topicId, onExit }: ChatScreenProps) {
   const topic = TOPICS.find((t) => t.id === topicId);
   const { settings } = useSettings();
   const [history, setHistory] = useState<ChatTurn[]>([]);
-  const [subtitle, setSubtitle] = useState("마이크를 누르고 있는 동안 영어로 말해보세요!");
+  const [subtitle, setSubtitle] = useState("마이크를 눌러서 영어로 말해보세요!");
   const [isSending, setIsSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -61,7 +61,12 @@ export function ChatScreen({ topicId, onExit }: ChatScreenProps) {
     [history, speak, topicId, settings.levelId, settings.modelKey]
   );
 
-  const handleMicPress = () => {
+  // 한 번 누르면 듣기 시작, 다시 누르면 듣기 종료 (토글 방식)
+  const handleMicClick = () => {
+    if (isListening) {
+      stopListening();
+      return;
+    }
     if (!isSttSupported) {
       setErrorMessage("이 브라우저는 음성 인식을 지원하지 않아요. Chrome을 사용해주세요.");
       return;
@@ -84,14 +89,11 @@ export function ChatScreen({ topicId, onExit }: ChatScreenProps) {
         {topic?.emoji} {topic?.titleKo ?? ""}
       </h2>
       <AvatarCharacter state={avatarState} />
-      <p className="max-w-md min-h-14 text-center text-lg text-gray-700">{subtitle}</p>
-      {errorMessage && <p className="text-red-500">{errorMessage}</p>}
-      <MicButton
-        disabled={isMicDisabled}
-        isListening={isListening}
-        onPress={handleMicPress}
-        onRelease={stopListening}
-      />
+      <p className="max-w-md min-h-14 text-center text-lg font-medium text-gray-800">
+        {subtitle}
+      </p>
+      {errorMessage && <p className="text-red-500 font-bold">{errorMessage}</p>}
+      <MicButton disabled={isMicDisabled} isListening={isListening} onClick={handleMicClick} />
       {!isTtsSupported && (
         <p className="text-sm text-gray-400">
           이 브라우저는 음성 출력을 지원하지 않아 텍스트로만 표시돼요.
