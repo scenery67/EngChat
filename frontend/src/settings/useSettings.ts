@@ -21,6 +21,7 @@ function readSettings(): AppSettings {
       levelId: isValidLevelId(parsed.levelId) ? parsed.levelId : DEFAULT_SETTINGS.levelId,
       modelKey: parsed.modelKey === "advanced" ? "advanced" : "basic",
       ttsRate: clampTtsRate(parsed.ttsRate),
+      voiceURI: typeof parsed.voiceURI === "string" ? parsed.voiceURI : null,
     };
   } catch {
     return DEFAULT_SETTINGS;

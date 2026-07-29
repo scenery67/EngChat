@@ -169,28 +169,23 @@ async function handleFeedback(request: Request, env: Env): Promise<Response> {
   }
 }
 
-// /admin 보호용 HTTP Basic Auth. 아이디는 검사하지 않고 비밀번호만 ADMIN_PASSWORD와 비교합니다.
-function isAdminAuthorized(request: Request, env: Env): boolean {
-  const authHeader = request.headers.get("Authorization");
-  if (!authHeader || !authHeader.startsWith("Basic ")) return false;
+// /admin 보호용: 브라우저 내장 로그인창(Basic Auth) 대신 직접 만든 비밀번호 입력 폼을 사용합니다.
+// (일부 브라우저/인앱 브라우저에서 Basic Auth 창이 뜨지 않는 문제가 있어 더 안정적인 방식으로 교체)
+const ADMIN_COOKIE_NAME = "admin_auth";
 
-  let decoded: string;
-  try {
-    decoded = atob(authHeader.slice("Basic ".length));
-  } catch {
-    return false;
+function getCookie(request: Request, name: string): string | null {
+  const cookieHeader = request.headers.get("Cookie");
+  if (!cookieHeader) return null;
+  for (const part of cookieHeader.split(";")) {
+    const [key, ...rest] = part.trim().split("=");
+    if (key === name) return rest.join("=");
   }
-
-  const separatorIndex = decoded.indexOf(":");
-  const password = separatorIndex === -1 ? decoded : decoded.slice(separatorIndex + 1);
-  return password.length > 0 && password === env.ADMIN_PASSWORD;
+  return null;
 }
 
-function requireBasicAuth(): Response {
-  return new Response("Authentication required", {
-    status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="Admin"' },
-  });
+function isAdminAuthorized(request: Request, env: Env): boolean {
+  const cookieValue = getCookie(request, ADMIN_COOKIE_NAME);
+  return !!cookieValue && cookieValue === env.ADMIN_PASSWORD;
 }
 
 function escapeHtml(text: string): string {
@@ -202,9 +197,61 @@ function escapeHtml(text: string): string {
     .replace(/'/g, "&#039;");
 }
 
+function adminLoginPage(errorMessage?: string): Response {
+  const html = `<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>관리자 로그인</title>
+  <style>
+    body { font-family: system-ui, sans-serif; display: flex; align-items: center;
+      justify-content: center; min-height: 100vh; margin: 0; background: #f4f4f4; }
+    form { background: white; padding: 32px; border-radius: 16px; display: flex;
+      flex-direction: column; gap: 12px; width: 280px; }
+    input { padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; }
+    button { padding: 12px; border: none; border-radius: 8px; background: #3b82f6;
+      color: white; font-size: 16px; font-weight: bold; cursor: pointer; }
+    p.error { color: #dc2626; margin: 0; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <form method="POST" action="/admin">
+    <h2 style="margin: 0 0 8px;">관리자 로그인</h2>
+    ${errorMessage ? `<p class="error">${escapeHtml(errorMessage)}</p>` : ""}
+    <input type="password" name="password" placeholder="비밀번호" autofocus required />
+    <button type="submit">입장하기</button>
+  </form>
+</body>
+</html>`;
+
+  return new Response(html, {
+    status: 200,
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+}
+
+async function handleAdminLogin(request: Request, env: Env): Promise<Response> {
+  const formData = await request.formData().catch(() => null);
+  const password = formData?.get("password");
+
+  if (typeof password !== "string" || password !== env.ADMIN_PASSWORD) {
+    return adminLoginPage("비밀번호가 틀렸습니다.");
+  }
+
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: "/admin",
+      // HttpOnly: JS로 못 읽음, Secure: HTTPS에서만 전송, SameSite=Lax: 기본적인 CSRF 방어
+      "Set-Cookie": `${ADMIN_COOKIE_NAME}=${encodeURIComponent(password)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
+    },
+  });
+}
+
 async function handleAdmin(request: Request, env: Env): Promise<Response> {
   if (!isAdminAuthorized(request, env)) {
-    return requireBasicAuth();
+    return adminLoginPage();
   }
 
   const { results } = await env.engchat_feedback
@@ -258,6 +305,9 @@ export default {
     }
     if (url.pathname === "/admin" && request.method === "GET") {
       return handleAdmin(request, env);
+    }
+    if (url.pathname === "/admin" && request.method === "POST") {
+      return handleAdminLogin(request, env);
     }
 
     return env.ASSETS.fetch(request);

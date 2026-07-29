@@ -23,7 +23,10 @@ export function ChatScreen({ topicId, onExit }: ChatScreenProps) {
 
   const { isSupported: isSttSupported, isListening, startListening, stopListening } =
     useSpeechRecognition();
-  const { isSupported: isTtsSupported, isSpeaking, speak } = useSpeechSynthesis(settings.ttsRate);
+  const { isSupported: isTtsSupported, isSpeaking, speak } = useSpeechSynthesis(
+    settings.ttsRate,
+    settings.voiceURI
+  );
 
   const handleUserMessage = useCallback(
     async (userMessage: string) => {

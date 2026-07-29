@@ -1,6 +1,8 @@
-// 설정 화면 - 난이도(학년) / 고급 모델 / TTS 말하기 속도
+// 설정 화면 - 난이도(학년) / 고급 모델 / 음성 목소리 / TTS 말하기 속도
 import { LEVELS } from "../../shared/levels";
 import { useSettings } from "../settings/useSettings";
+import { useVoices } from "../hooks/useVoices";
+import { useSpeechSynthesis } from "../hooks/useSpeechSynthesis";
 
 interface SettingsScreenProps {
   onExit: () => void;
@@ -8,6 +10,8 @@ interface SettingsScreenProps {
 
 export function SettingsScreen({ onExit }: SettingsScreenProps) {
   const { settings, update } = useSettings();
+  const voices = useVoices();
+  const { speak } = useSpeechSynthesis(settings.ttsRate, settings.voiceURI);
 
   return (
     <div className="flex flex-col items-center gap-6 p-8 min-h-screen">
@@ -75,6 +79,37 @@ export function SettingsScreen({ onExit }: SettingsScreenProps) {
           onChange={(e) => update({ ttsRate: Number(e.target.value) })}
           className="w-full"
         />
+      </section>
+
+      <section className="w-full max-w-xl p-4 rounded-2xl bg-white border-4 border-gray-200">
+        <p className="font-bold text-gray-800 mb-2">음성 목소리</p>
+        {voices.length === 0 ? (
+          <p className="text-sm text-gray-500">
+            이 브라우저에서는 목소리를 선택할 수 없어요. 기본 목소리로 재생됩니다.
+          </p>
+        ) : (
+          <div className="flex gap-2">
+            <select
+              value={settings.voiceURI ?? ""}
+              onChange={(e) => update({ voiceURI: e.target.value || null })}
+              className="flex-1 p-3 rounded-2xl border-4 border-gray-200"
+            >
+              <option value="">기본 목소리</option>
+              {voices.map((voice) => (
+                <option key={voice.voiceURI} value={voice.voiceURI}>
+                  {voice.name} ({voice.lang})
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => speak("Hello! Nice to meet you!")}
+              className="px-4 py-3 rounded-2xl bg-blue-500 text-white font-bold active:scale-95"
+            >
+              들어보기
+            </button>
+          </div>
+        )}
       </section>
     </div>
   );
