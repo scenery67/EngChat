@@ -21,6 +21,9 @@ export function AvatarCharacter({ state }: AvatarCharacterProps) {
   return (
     <div className="flex flex-col items-center gap-3">
       <div
+        // 모바일 브라우저의 강제 다크모드(자동 색 반전)가 이 얼굴 색만은 건드리지 않도록
+        // color-scheme을 이 요소에만 라이트로 고정합니다 (앱 전체에는 적용하지 않음).
+        style={{ colorScheme: "light" }}
         className={`relative w-56 h-56 rounded-full bg-yellow-300 border-8 border-yellow-500 shadow-xl ${
           state === "idle" ? "animate-breathe" : ""
         }`}
