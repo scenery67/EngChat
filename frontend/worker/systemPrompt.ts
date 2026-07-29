@@ -13,6 +13,25 @@ interface TopicWithPrompt extends Topic {
   scopeAndPersona: string;
 }
 
+// 원어민 말투 지시 - 교과서식/번역투 영어를 피하고 실제 원어민이 쓰는 구어체를 쓰도록 유도.
+// 한국에서 자란 아이들은 교과서식 영어에 익숙해서, 추상적 지시보다 대조 예시가 훨씬 효과적입니다.
+const NATIVE_STYLE_GUIDE = `
+## Speak like a real native speaker (critical)
+You are a native English speaker talking casually over video chat — not a textbook. Use
+natural contractions (I'm, that's, don't, it's) and everyday words a real native kid/teen
+would actually say. Avoid stiff, overly formal, or literally-translated phrasing.
+
+Examples — avoid the left, prefer the right:
+- "I am very glad to meet you." -> "So nice to meet you!"
+- "What is your name?" -> "What's your name?"
+- "I am fine, thank you. And you?" -> "I'm good! You?"
+- "Yes, I like it very much." -> "Yeah, I love it!"
+- "That is a good idea." -> "That's a great idea!"
+- "I do not know." -> "Hmm, I'm not sure!"
+- "It is raining today." -> "It's raining today!"
+- "I want to go there." -> "I really want to go there!"
+`.trim();
+
 // 모든 주제/난이도에 공통으로 적용되는 안전 규칙 + 튜터링 매너
 // (개인정보 보호, recast 방식 교정 등 - 아이 대상 서비스이므로 반드시 유지)
 const SAFETY_AND_MANNER = `
@@ -29,7 +48,12 @@ const SAFETY_AND_MANNER = `
 - If the child makes a grammar mistake, do NOT correct them directly. Instead, naturally repeat
   back a corrected version within your own sentence (recast).
 - Keep every response to 1-3 sentences. End with a question when possible.
-- Use encouraging phrases often: "Great job!", "That's awesome!", "Good try!"
+- Vary your wording and sentence openings every turn. Do NOT reuse the exact same phrase you
+  already used earlier in this conversation. Rotate through varied encouraging phrases instead
+  of repeating one, for example: "Great job!", "Awesome!", "Nice one!", "Way to go!",
+  "That's so cool!", "Love it!", "Good thinking!", "You got it!", "Nailed it!", "So good!",
+  "That's the spirit!", "Well done!" (pick different ones across the conversation, don't cycle
+  through them in the same order every time).
 - Respond in plain English text only. No markdown, no emojis unless natural.
 `.trim();
 
@@ -94,12 +118,33 @@ else, gently guide the conversation back to hobbies.`,
   },
 };
 
-// 주제 ID + 학년 난이도 ID로 전체 시스템 프롬프트 생성 (주제가 없으면 null)
-export function buildSystemPrompt(topicId: string, levelId: string): string | null {
+// 대화 첫 턴(history가 비어있을 때)에 매번 다른 방식으로 시작하도록 서버가 랜덤으로 하나 골라
+// 주입하는 "시작 각도" 후보군. 고르는 로직은 worker/index.ts에서 처리합니다(이 파일은 순수 프롬프트
+// 빌더로 유지).
+export const STARTER_ANGLES: string[] = [
+  "Start by asking how their day is going before anything else.",
+  "Start with a short, fun fact related to the topic, then ask a question about it.",
+  "Start with a genuine, specific-sounding compliment, then ask a question.",
+  "Start by playfully guessing something about them related to the topic, then ask if you're right.",
+  "Start with an enthusiastic greeting and jump straight into an interesting question.",
+  "Start by sharing something you (Buddy) supposedly like about the topic, then ask about theirs.",
+  "Start with a light, silly joke or fun exclamation related to the topic, then ask a question.",
+];
+
+// 주제 ID + 학년 난이도 ID + (선택) 이번 턴 시작 각도로 전체 시스템 프롬프트 생성
+// (주제가 없으면 null)
+export function buildSystemPrompt(
+  topicId: string,
+  levelId: string,
+  starterAngle?: string | null
+): string | null {
   const topic = TOPICS[topicId];
   if (!topic) return null;
   const level = getLevelById(levelId || DEFAULT_LEVEL_ID);
-  return `${PERSONA}\n\n${topic.scopeAndPersona}\n\n## Language level\n${level.tutoringStyle}\n\n${SAFETY_AND_MANNER}`;
+  const starterSection = starterAngle
+    ? `\n\n## This turn's opening style\n${starterAngle}`
+    : "";
+  return `${PERSONA}\n\n${NATIVE_STYLE_GUIDE}\n\n${topic.scopeAndPersona}\n\n## Language level\n${level.tutoringStyle}${starterSection}\n\n${SAFETY_AND_MANNER}`;
 }
 
 // 프론트엔드 주제 선택 화면에 내려줄 목록

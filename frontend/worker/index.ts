@@ -1,6 +1,6 @@
 // Cloudflare Worker 진입점 (엔드포인트: /api/chat, /api/feedback, /admin)
 // 그 외 요청은 정적 자산(ASSETS)으로 위임합니다.
-import { buildSystemPrompt } from "./systemPrompt";
+import { buildSystemPrompt, STARTER_ANGLES } from "./systemPrompt";
 import { isValidLevelId, DEFAULT_LEVEL_ID } from "../shared/levels";
 import { resolveModel } from "../shared/models";
 
@@ -83,7 +83,11 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
   const { topicId, history, userMessage, levelId, modelKey } = payload;
 
   const resolvedLevelId = isValidLevelId(levelId) ? levelId : DEFAULT_LEVEL_ID;
-  const systemPrompt = buildSystemPrompt(topicId, resolvedLevelId);
+  // 대화 첫 턴(history 비어있음)에는 매번 다른 "시작 각도"를 랜덤으로 골라 주입해서
+  // 대화 시작 문장이 항상 똑같이 수렴하지 않도록 합니다.
+  const starterAngle =
+    history.length === 0 ? STARTER_ANGLES[Math.floor(Math.random() * STARTER_ANGLES.length)] : null;
+  const systemPrompt = buildSystemPrompt(topicId, resolvedLevelId, starterAngle);
   if (!systemPrompt) {
     return jsonResponse({ error: "존재하지 않는 주제입니다." }, 400);
   }
@@ -98,6 +102,10 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
       body: JSON.stringify({
         model: resolveModel(modelKey), // 화이트리스트 강제: "gpt-4o-mini" 또는 "gpt-4o"만 나올 수 있음
         max_tokens: 300,
+        // temperature를 기본값보다 살짝 높이고 presence_penalty를 줘서, 같은 대화 안에서
+        // 이미 나온 단어/구절을 반복하지 않고 표현을 다양하게 쓰도록 유도합니다.
+        temperature: 1.1,
+        presence_penalty: 0.6,
         messages: [
           { role: "system", content: systemPrompt },
           ...history,
