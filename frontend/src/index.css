@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+/* AvatarCharacter 상태별 애니메이션 (대기/말하는 중) */
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+@keyframes talk {
+  0%,
+  100% {
+    height: 0.75rem;
+  }
+  50% {
+    height: 2rem;
+  }
+}
+
+.animate-breathe {
+  animation: breathe 3s ease-in-out infinite;
+}
+
+.animate-talk {
+  animation: talk 0.3s ease-in-out infinite;
+}
