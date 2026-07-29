@@ -1,5 +1,5 @@
-// Cloudflare Worker 진입점
-// "/api/chat", "/api/feedback", "/admin" 요청은 직접 처리하고, 그 외 요청은 정적 자산(ASSETS)으로 위임합니다.
+// Cloudflare Worker 진입점 (엔드포인트: /api/chat, /api/feedback, /admin)
+// 그 외 요청은 정적 자산(ASSETS)으로 위임합니다.
 import { buildSystemPrompt } from "./systemPrompt";
 import { isValidLevelId, DEFAULT_LEVEL_ID } from "../shared/levels";
 import { resolveModel } from "../shared/models";
