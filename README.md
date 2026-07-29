@@ -22,7 +22,7 @@ push할 때마다 자동으로 빌드+배포됩니다.
   로는 절대 안 보이고, Wrangler(`npm run worker:dev`)로 띄워야만 동작합니다.
 - `frontend/shared/` — 프론트엔드와 Worker가 함께 쓰는 데이터(난이도 12단계, GPT
   모델 화이트리스트, TTS 목소리 화이트리스트).
-- `frontend/migrations/` — 피드백 저장용 D1(SQLite) 테이블 마이그레이션.
+- `frontend/migrations/` — 피드백 저장용 + 레이트 리미팅용 D1(SQLite) 테이블 마이그레이션.
 - `frontend/wrangler.toml` — Worker 이름, 정적 자산 경로, D1 바인딩 설정.
 
 ## 1. OpenAI API 키 발급
@@ -71,7 +71,8 @@ curl -X POST http://localhost:8788/api/chat \
 
 ### 로컬 D1(피드백 저장소) 준비
 
-최초 1회, 로컬 SQLite에 피드백 테이블을 만들어야 `/api/feedback`이 동작합니다:
+최초 1회, 로컬 SQLite에 피드백 테이블 + 레이트 리미팅 테이블을 만들어야 `/api/feedback`,
+`/api/chat`, `/api/tts`, `/admin`이 정상 동작합니다:
 
 ```bash
 cd frontend
@@ -123,6 +124,33 @@ GitHub Actions는 쓰지 않습니다. `main` 브랜치에 push하면 Cloudflare
 
 - https://engchat.kkpark67.workers.dev/admin 접속 → 등록한 `ADMIN_PASSWORD` 입력
 - 또는 CLI로: `npx wrangler d1 execute engchat-feedback --remote --command "SELECT * FROM feedback ORDER BY id DESC"`
+
+## 5. 보안 조치 (오남용/비용 폭증 방지)
+
+이 앱은 로그인이 없는 공개 API(`/api/chat`, `/api/tts`, `/api/feedback`)를 가지고 있어서,
+아래와 같은 기본적인 방어 장치를 적용해두었습니다.
+
+- **레이트 리미팅(요청 횟수 제한)**: IP + 라우트 기준으로 10분 창(window) 안의 요청
+  수를 세어(D1 `rate_limit_counters` 테이블), 한도를 넘으면 `429`로 차단합니다. 짧은
+  시간에 스크립트로 요청을 몰아쳐서 OpenAI 비용이 폭증하는 것을 막는 것이 목적입니다.
+  - `/api/chat`: IP당 10분에 20회
+  - `/api/tts`: IP당 10분에 30회
+  - `/api/feedback`: IP당 10분에 5회
+  - `/admin` 로그인: IP당 10분에 10회 (비밀번호 무차별 대입 방지)
+  - 한도는 `frontend/worker/index.ts`의 `checkRateLimit(...)` 호출부 숫자를 바꾸면
+    조정됩니다. (개인 프로토타입 기준으로 넉넉하게 잡은 값이라, 실사용 중 너무 자주
+    막히면 값을 올려도 됩니다.)
+- **SQL Injection 방지**: D1에 값을 넣는 모든 쿼리는 문자열 결합 없이 `?` + `.bind()`
+  파라미터 바인딩만 사용합니다 (`feedback` 저장, 레이트 리미터 카운터 모두 동일).
+- **XSS 방지**: `/admin` 페이지에서 사용자가 보낸 피드백 원문을 HTML에 출력할 때
+  `escapeHtml()`로 이스케이프합니다.
+- **입력값 화이트리스트**: 클라이언트가 보낸 `modelKey`/`levelId`/`voice` 등은 서버에서
+  화이트리스트로 강제 변환해, 임의 문자열로 더 비싼 모델을 지정하거나 예상 못한 값을
+  주입할 수 없게 합니다.
+- **관리자 인증**: `/admin`은 비밀번호 확인 후 `HttpOnly; Secure; SameSite=Lax` 쿠키로만
+  접근 가능합니다 (JS로 탈취 불가, HTTPS 전용).
+- 이 프로젝트는 **개인용 프로토타입** 기준의 방어 수준입니다. 실제 서비스로 확장한다면
+  Cloudflare 대시보드의 WAF/Rate Limiting Rules, 로그인/과금 연동 등을 추가로 고려하세요.
 
 ## 참고 사항
 

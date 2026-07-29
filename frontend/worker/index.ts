@@ -9,6 +9,7 @@ import { resolveTtsVoice } from "../shared/ttsVoices";
 interface D1PreparedStatement {
   run(): Promise<unknown>;
   all<T = unknown>(): Promise<{ results: T[] }>;
+  first<T = unknown>(): Promise<T | null>;
 }
 interface D1Database {
   prepare(query: string): {
@@ -73,7 +74,56 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+// ---- 레이트 리미팅 (비용 남용 / 무차별 대입 공격 방지) ----
+// IP + 라우트 조합으로 고정 시간창(윈도우) 안의 요청 수를 세고, 한도를 넘으면 차단합니다.
+// 짧은 시간에 API를 몰아서 호출해 OpenAI 비용이 폭증하거나, /admin 비밀번호를 무차별
+// 대입으로 시도하는 것을 막기 위한 최소한의 안전장치입니다. (기존 feedback D1을 그대로
+// 재사용해서 별도 KV 등록 없이도 동작하도록 함)
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000; // 10분 단위 창
+
+function getClientIp(request: Request): string {
+  return request.headers.get("CF-Connecting-IP") ?? "unknown";
+}
+
+async function checkRateLimit(env: Env, bucket: string, limit: number): Promise<boolean> {
+  const windowStart = Math.floor(Date.now() / RATE_LIMIT_WINDOW_MS) * RATE_LIMIT_WINDOW_MS;
+  try {
+    // UPSERT로 이번 창의 카운트를 1 증가시키고 그 결과값을 바로 받아옵니다.
+    const row = await env.engchat_feedback
+      .prepare(
+        `INSERT INTO rate_limit_counters (bucket_key, window_start, count) VALUES (?, ?, 1)
+         ON CONFLICT(bucket_key, window_start) DO UPDATE SET count = count + 1
+         RETURNING count`
+      )
+      .bind(bucket, windowStart)
+      .first<{ count: number }>();
+
+    // 낮은 확률로 오래된 창 데이터를 정리 (테이블이 무한정 커지는 것 방지)
+    if (Math.random() < 0.01) {
+      const cutoff = windowStart - RATE_LIMIT_WINDOW_MS * 6;
+      await env.engchat_feedback
+        .prepare("DELETE FROM rate_limit_counters WHERE window_start < ?")
+        .bind(cutoff)
+        .run();
+    }
+
+    return (row?.count ?? 0) <= limit;
+  } catch (error) {
+    // 레이트 리미터 자체 오류로 서비스 전체가 막히면 안 되므로, 오류 시에는 통과시킵니다.
+    console.error("[rateLimit] error:", error);
+    return true;
+  }
+}
+
+function rateLimitResponse(): Response {
+  return jsonResponse({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." }, 429);
+}
+
 async function handleChat(request: Request, env: Env): Promise<Response> {
+  if (!(await checkRateLimit(env, `chat:${getClientIp(request)}`, 20))) {
+    return rateLimitResponse();
+  }
+
   let payload: unknown;
   try {
     payload = await request.json();
@@ -157,6 +207,10 @@ function isValidFeedbackRequest(body: unknown): body is FeedbackRequestBody {
 }
 
 async function handleFeedback(request: Request, env: Env): Promise<Response> {
+  if (!(await checkRateLimit(env, `feedback:${getClientIp(request)}`, 5))) {
+    return rateLimitResponse();
+  }
+
   let payload: unknown;
   try {
     payload = await request.json();
@@ -198,6 +252,10 @@ function isValidTtsRequest(body: unknown): body is TtsRequestBody {
 }
 
 async function handleTts(request: Request, env: Env): Promise<Response> {
+  if (!(await checkRateLimit(env, `tts:${getClientIp(request)}`, 30))) {
+    return rateLimitResponse();
+  }
+
   let payload: unknown;
   try {
     payload = await request.json();
@@ -305,11 +363,21 @@ function adminLoginPage(errorMessage?: string): Response {
 
   return new Response(html, {
     status: 200,
-    headers: { "Content-Type": "text/html; charset=utf-8" },
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      // 기본 보안 헤더: MIME 스니핑 방지 + iframe 삽입(클릭재킹) 방지
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "DENY",
+    },
   });
 }
 
 async function handleAdminLogin(request: Request, env: Env): Promise<Response> {
+  // 비밀번호 무차별 대입(brute-force) 시도를 막기 위한 로그인 시도 횟수 제한
+  if (!(await checkRateLimit(env, `adminLogin:${getClientIp(request)}`, 10))) {
+    return adminLoginPage("로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.");
+  }
+
   const formData = await request.formData().catch(() => null);
   const password = formData?.get("password");
 
@@ -375,7 +443,13 @@ async function handleAdmin(request: Request, env: Env): Promise<Response> {
 </body>
 </html>`;
 
-  return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+  return new Response(html, {
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "DENY",
+    },
+  });
 }
 
 export default {
