@@ -51,7 +51,7 @@ export function SettingsScreen({ onExit }: SettingsScreenProps) {
       <section className="w-full max-w-xl flex items-center justify-between p-4 rounded-2xl bg-white border-4 border-gray-200">
         <div>
           <p className="font-bold text-gray-800">고급 모델 사용</p>
-          <p className="text-sm text-gray-500">응답 품질이 더 좋아지지만 비용이 올라가요</p>
+          <p className="text-sm text-gray-500">응답 품질이 더 좋아지지만 느려질 수 있어요</p>
         </div>
         <button
           type="button"
@@ -94,6 +94,32 @@ export function SettingsScreen({ onExit }: SettingsScreenProps) {
             }`}
           />
         </button>
+      </section>
+
+      <section className="w-full max-w-xl p-4 rounded-2xl bg-white border-4 border-gray-200">
+        <p className="font-bold text-gray-800 mb-2">마이크 조작 방식</p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => update({ micMode: "toggle" })}
+            className={`flex-1 p-3 rounded-2xl border-4 text-left transition-colors ${
+              settings.micMode === "toggle" ? "border-blue-400 bg-blue-50" : "border-gray-200 bg-white"
+            }`}
+          >
+            <p className="font-bold text-gray-800">탭해서 켜고 끄기</p>
+            <p className="text-sm text-gray-500">한 번 눌러 시작, 다시 눌러 종료 (기본)</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => update({ micMode: "hold" })}
+            className={`flex-1 p-3 rounded-2xl border-4 text-left transition-colors ${
+              settings.micMode === "hold" ? "border-blue-400 bg-blue-50" : "border-gray-200 bg-white"
+            }`}
+          >
+            <p className="font-bold text-gray-800">누르고 있기</p>
+            <p className="text-sm text-gray-500">누르고 있는 동안만 듣기</p>
+          </button>
+        </div>
       </section>
 
       <section className="w-full max-w-xl p-4 rounded-2xl bg-white border-4 border-gray-200">

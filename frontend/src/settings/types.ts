@@ -2,6 +2,8 @@ import type { LevelId } from "../../shared/levels";
 import type { ModelKey } from "../../shared/models";
 import type { TtsVoiceKey } from "../../shared/ttsVoices";
 
+export type MicMode = "toggle" | "hold";
+
 export interface AppSettings {
   levelId: LevelId;
   modelKey: ModelKey;
@@ -11,6 +13,8 @@ export interface AppSettings {
   // true면 브라우저 무료 TTS 대신 OpenAI TTS(유료, 훨씬 자연스러움)를 사용합니다.
   useOpenAiTts: boolean;
   openAiVoice: TtsVoiceKey;
+  // "toggle": 한 번 눌러 켜고 다시 눌러 끄기 (기본) / "hold": 누르고 있는 동안만 듣기
+  micMode: MicMode;
 }
 
 // 기존 useSpeechSynthesis.ts에 하드코딩되어 있던 값(0.95)과 동일하게 맞춰,
@@ -22,4 +26,5 @@ export const DEFAULT_SETTINGS: AppSettings = {
   voiceURI: null,
   useOpenAiTts: false,
   openAiVoice: "nova",
+  micMode: "toggle",
 };

@@ -18,7 +18,11 @@ export function ChatScreen({ topicId, onExit }: ChatScreenProps) {
   const topic = TOPICS.find((t) => t.id === topicId);
   const { settings } = useSettings();
   const [history, setHistory] = useState<ChatTurn[]>([]);
-  const [subtitle, setSubtitle] = useState("마이크를 눌러서 영어로 말해보세요!");
+  const [subtitle, setSubtitle] = useState(
+    settings.micMode === "hold"
+      ? "마이크를 누르고 있는 동안 영어로 말해보세요!"
+      : "마이크를 눌러서 영어로 말해보세요!"
+  );
   const [isSending, setIsSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -61,12 +65,7 @@ export function ChatScreen({ topicId, onExit }: ChatScreenProps) {
     [history, speak, topicId, settings.levelId, settings.modelKey]
   );
 
-  // 한 번 누르면 듣기 시작, 다시 누르면 듣기 종료 (토글 방식)
-  const handleMicClick = () => {
-    if (isListening) {
-      stopListening();
-      return;
-    }
+  const beginListening = () => {
     if (!isSttSupported) {
       setErrorMessage("이 브라우저는 음성 인식을 지원하지 않아요. Chrome을 사용해주세요.");
       return;
@@ -75,6 +74,25 @@ export function ChatScreen({ topicId, onExit }: ChatScreenProps) {
     startListening((transcript) => {
       void handleUserMessage(transcript);
     });
+  };
+
+  // toggle 모드: 한 번 누르면 시작, 다시 누르면 종료
+  const handleMicClick = () => {
+    if (isListening) {
+      stopListening();
+      return;
+    }
+    beginListening();
+  };
+
+  // hold 모드: 누르고 있는 동안만 듣기
+  const handleMicPress = () => {
+    if (isListening) return;
+    beginListening();
+  };
+
+  const handleMicRelease = () => {
+    if (isListening) stopListening();
   };
 
   const avatarState: AvatarState = isSpeaking ? "speaking" : isListening ? "listening" : "idle";
@@ -93,7 +111,14 @@ export function ChatScreen({ topicId, onExit }: ChatScreenProps) {
         {subtitle}
       </p>
       {errorMessage && <p className="text-red-500 font-bold">{errorMessage}</p>}
-      <MicButton disabled={isMicDisabled} isListening={isListening} onClick={handleMicClick} />
+      <MicButton
+        disabled={isMicDisabled}
+        isListening={isListening}
+        mode={settings.micMode}
+        onClick={handleMicClick}
+        onPress={handleMicPress}
+        onRelease={handleMicRelease}
+      />
       {!isTtsSupported && (
         <p className="text-sm text-gray-400">
           이 브라우저는 음성 출력을 지원하지 않아 텍스트로만 표시돼요.

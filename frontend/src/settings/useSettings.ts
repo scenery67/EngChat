@@ -25,6 +25,7 @@ function readSettings(): AppSettings {
       voiceURI: typeof parsed.voiceURI === "string" ? parsed.voiceURI : null,
       useOpenAiTts: parsed.useOpenAiTts === true,
       openAiVoice: isValidTtsVoice(parsed.openAiVoice) ? parsed.openAiVoice : DEFAULT_SETTINGS.openAiVoice,
+      micMode: parsed.micMode === "hold" ? "hold" : "toggle",
     };
   } catch {
     return DEFAULT_SETTINGS;
