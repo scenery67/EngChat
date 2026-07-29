@@ -1,5 +1,7 @@
 name = "engchat"
+main = "worker/index.ts"
 compatibility_date = "2026-07-29"
 
 [assets]
 directory = "./dist"
+binding = "ASSETS"

@@ -1,14 +1,10 @@
-// POST /api/chat - Cloudflare Pages Function
-// OpenAI API를 경유하여 튜터 캐릭터의 응답을 생성합니다.
-import { buildSystemPrompt } from "../_lib/systemPrompt";
+// Cloudflare Worker 진입점
+// "/api/chat" 요청은 직접 처리하고, 그 외 요청은 정적 자산(ASSETS)으로 위임합니다.
+import { buildSystemPrompt } from "./systemPrompt";
 
 interface Env {
   OPENAI_API_KEY: string;
-}
-
-interface PagesContext {
-  request: Request;
-  env: Env;
+  ASSETS: { fetch: (request: Request) => Promise<Response> };
 }
 
 type ChatTurn = { role: "user" | "assistant"; content: string };
@@ -49,9 +45,7 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
-export async function onRequestPost(context: PagesContext): Promise<Response> {
-  const { request, env } = context;
-
+async function handleChat(request: Request, env: Env): Promise<Response> {
   let payload: unknown;
   try {
     payload = await request.json();
@@ -112,3 +106,15 @@ export async function onRequestPost(context: PagesContext): Promise<Response> {
     return jsonResponse({ error: "일시적인 오류가 발생했습니다." }, 500);
   }
 }
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url);
+
+    if (url.pathname === "/api/chat" && request.method === "POST") {
+      return handleChat(request, env);
+    }
+
+    return env.ASSETS.fetch(request);
+  },
+};
