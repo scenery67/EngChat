@@ -1,8 +1,10 @@
 // 설정 화면 - 난이도(학년) / 고급 모델 / 음성 목소리 / TTS 말하기 속도
 import { LEVELS } from "../../shared/levels";
+import { TTS_VOICE_LABELS, type TtsVoiceKey } from "../../shared/ttsVoices";
 import { useSettings } from "../settings/useSettings";
 import { useVoices } from "../hooks/useVoices";
 import { useSpeechSynthesis } from "../hooks/useSpeechSynthesis";
+import { useOpenAiSpeech } from "../hooks/useOpenAiSpeech";
 
 interface SettingsScreenProps {
   onExit: () => void;
@@ -11,7 +13,9 @@ interface SettingsScreenProps {
 export function SettingsScreen({ onExit }: SettingsScreenProps) {
   const { settings, update } = useSettings();
   const voices = useVoices();
-  const { speak } = useSpeechSynthesis(settings.ttsRate, settings.voiceURI);
+  const browserSpeech = useSpeechSynthesis(settings.ttsRate, settings.voiceURI);
+  const openAiSpeech = useOpenAiSpeech(settings.ttsRate, settings.openAiVoice);
+  const speak = settings.useOpenAiTts ? openAiSpeech.speak : browserSpeech.speak;
 
   return (
     <div className="flex flex-col items-center gap-6 p-8 min-h-screen">
@@ -68,6 +72,30 @@ export function SettingsScreen({ onExit }: SettingsScreenProps) {
         </button>
       </section>
 
+      <section className="w-full max-w-xl flex items-center justify-between p-4 rounded-2xl bg-white border-4 border-gray-200">
+        <div>
+          <p className="font-bold text-gray-800">자연스러운 목소리 사용</p>
+          <p className="text-sm text-gray-500">
+            훨씬 자연스러운 목소리지만 추가 비용이 발생해요
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={settings.useOpenAiTts}
+          onClick={() => update({ useOpenAiTts: !settings.useOpenAiTts })}
+          className={`w-14 h-8 rounded-full relative transition-colors ${
+            settings.useOpenAiTts ? "bg-blue-500" : "bg-gray-300"
+          }`}
+        >
+          <span
+            className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white transition-transform ${
+              settings.useOpenAiTts ? "translate-x-6" : ""
+            }`}
+          />
+        </button>
+      </section>
+
       <section className="w-full max-w-xl p-4 rounded-2xl bg-white border-4 border-gray-200">
         <p className="font-bold text-gray-800 mb-2">말하기 속도: {settings.ttsRate.toFixed(2)}x</p>
         <input
@@ -82,8 +110,30 @@ export function SettingsScreen({ onExit }: SettingsScreenProps) {
       </section>
 
       <section className="w-full max-w-xl p-4 rounded-2xl bg-white border-4 border-gray-200">
-        <p className="font-bold text-gray-800 mb-2">음성 목소리 ({voices.length}개 사용 가능)</p>
-        {voices.length === 0 ? (
+        <p className="font-bold text-gray-800 mb-2">음성 목소리</p>
+
+        {settings.useOpenAiTts ? (
+          <div className="flex gap-2">
+            <select
+              value={settings.openAiVoice}
+              onChange={(e) => update({ openAiVoice: e.target.value as TtsVoiceKey })}
+              className="flex-1 p-3 rounded-2xl border-4 border-gray-200"
+            >
+              {Object.entries(TTS_VOICE_LABELS).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => speak("Hello! Nice to meet you!")}
+              className="px-4 py-3 rounded-2xl bg-blue-500 text-white font-bold active:scale-95"
+            >
+              들어보기
+            </button>
+          </div>
+        ) : voices.length === 0 ? (
           <p className="text-sm text-gray-500">
             이 브라우저에서는 목소리를 선택할 수 없어요. 기본 목소리로 재생됩니다.
           </p>

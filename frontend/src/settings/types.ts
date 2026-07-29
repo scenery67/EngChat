@@ -1,5 +1,6 @@
 import type { LevelId } from "../../shared/levels";
 import type { ModelKey } from "../../shared/models";
+import type { TtsVoiceKey } from "../../shared/ttsVoices";
 
 export interface AppSettings {
   levelId: LevelId;
@@ -7,6 +8,9 @@ export interface AppSettings {
   ttsRate: number;
   // 브라우저가 제공하는 SpeechSynthesisVoice.voiceURI. null이면 브라우저 기본 음성을 사용합니다.
   voiceURI: string | null;
+  // true면 브라우저 무료 TTS 대신 OpenAI TTS(유료, 훨씬 자연스러움)를 사용합니다.
+  useOpenAiTts: boolean;
+  openAiVoice: TtsVoiceKey;
 }
 
 // 기존 useSpeechSynthesis.ts에 하드코딩되어 있던 값(0.95)과 동일하게 맞춰,
@@ -16,4 +20,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   modelKey: "basic",
   ttsRate: 0.95,
   voiceURI: null,
+  useOpenAiTts: false,
+  openAiVoice: "nova",
 };

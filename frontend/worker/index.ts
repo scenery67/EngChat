@@ -3,6 +3,7 @@
 import { buildSystemPrompt, STARTER_ANGLES } from "./systemPrompt";
 import { isValidLevelId, DEFAULT_LEVEL_ID } from "../shared/levels";
 import { resolveModel } from "../shared/models";
+import { resolveTtsVoice } from "../shared/ttsVoices";
 
 // wrangler.toml에서 실제 쓰는 메서드만 최소로 선언 (별도 타입 패키지 미사용 컨벤션 유지)
 interface D1PreparedStatement {
@@ -177,6 +178,71 @@ async function handleFeedback(request: Request, env: Env): Promise<Response> {
   }
 }
 
+interface TtsRequestBody {
+  text: string;
+  voice?: string;
+}
+
+function isValidTtsRequest(body: unknown): body is TtsRequestBody {
+  if (typeof body !== "object" || body === null) return false;
+  const b = body as Record<string, unknown>;
+  if (typeof b.text !== "string" || b.text.trim().length === 0 || b.text.length > 1000) {
+    return false;
+  }
+  if (b.voice !== undefined && typeof b.voice !== "string") return false;
+  return true;
+}
+
+async function handleTts(request: Request, env: Env): Promise<Response> {
+  let payload: unknown;
+  try {
+    payload = await request.json();
+  } catch {
+    return jsonResponse({ error: "잘못된 요청 형식입니다." }, 400);
+  }
+
+  if (!isValidTtsRequest(payload)) {
+    return jsonResponse({ error: "잘못된 요청 형식입니다." }, 400);
+  }
+
+  try {
+    const openaiRes = await fetch("https://api.openai.com/v1/audio/speech", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini-tts",
+        input: payload.text,
+        voice: resolveTtsVoice(payload.voice), // 화이트리스트 강제: 6개 표준 보이스만 나올 수 있음
+        response_format: "mp3",
+      }),
+    });
+
+    if (!openaiRes.ok) {
+      if (openaiRes.status === 429) {
+        return jsonResponse({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." }, 429);
+      }
+      if (openaiRes.status === 401) {
+        console.error("[tts] Authentication error - OPENAI_API_KEY를 확인하세요.");
+        return jsonResponse({ error: "서버 설정 오류입니다." }, 500);
+      }
+      const errorBody = await openaiRes.text();
+      console.error("[tts] OpenAI API error:", openaiRes.status, errorBody);
+      return jsonResponse({ error: "일시적인 오류가 발생했습니다." }, 500);
+    }
+
+    // 오디오 바이트를 JSON으로 감싸지 않고 그대로 응답 본문으로 전달합니다.
+    return new Response(openaiRes.body, {
+      headers: { "Content-Type": "audio/mpeg" },
+    });
+  } catch (error) {
+    console.error("[tts] Unexpected error:", error);
+    return jsonResponse({ error: "일시적인 오류가 발생했습니다." }, 500);
+  }
+}
+
 // /admin 보호용: 브라우저 내장 로그인창(Basic Auth) 대신 직접 만든 비밀번호 입력 폼을 사용합니다.
 // (일부 브라우저/인앱 브라우저에서 Basic Auth 창이 뜨지 않는 문제가 있어 더 안정적인 방식으로 교체)
 const ADMIN_COOKIE_NAME = "admin_auth";
@@ -317,6 +383,9 @@ export default {
     }
     if (url.pathname === "/api/feedback" && request.method === "POST") {
       return handleFeedback(request, env);
+    }
+    if (url.pathname === "/api/tts" && request.method === "POST") {
+      return handleTts(request, env);
     }
     if (url.pathname === "/admin" && request.method === "GET") {
       return handleAdmin(request, env);

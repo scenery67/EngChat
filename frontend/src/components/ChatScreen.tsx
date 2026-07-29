@@ -4,6 +4,7 @@ import { AvatarCharacter, type AvatarState } from "./AvatarCharacter";
 import { MicButton } from "./MicButton";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 import { useSpeechSynthesis } from "../hooks/useSpeechSynthesis";
+import { useOpenAiSpeech } from "../hooks/useOpenAiSpeech";
 import { sendChatMessage, type ChatTurn } from "../api/chatApi";
 import { TOPICS } from "../curriculum/topics";
 import { useSettings } from "../settings/useSettings";
@@ -23,10 +24,13 @@ export function ChatScreen({ topicId, onExit }: ChatScreenProps) {
 
   const { isSupported: isSttSupported, isListening, startListening, stopListening } =
     useSpeechRecognition();
-  const { isSupported: isTtsSupported, isSpeaking, speak } = useSpeechSynthesis(
-    settings.ttsRate,
-    settings.voiceURI
-  );
+  // React 훅 규칙상 조건부로 훅을 호출할 수 없어서, 두 훅을 항상 호출해두고 설정값에 따라
+  // 실제 사용할 쪽만 골라 씁니다.
+  const browserSpeech = useSpeechSynthesis(settings.ttsRate, settings.voiceURI);
+  const openAiSpeech = useOpenAiSpeech(settings.ttsRate, settings.openAiVoice);
+  const { isSupported: isTtsSupported, isSpeaking, speak } = settings.useOpenAiTts
+    ? openAiSpeech
+    : browserSpeech;
 
   const handleUserMessage = useCallback(
     async (userMessage: string) => {

@@ -2,6 +2,7 @@
 import { useCallback, useState } from "react";
 import { DEFAULT_SETTINGS, type AppSettings } from "./types";
 import { isValidLevelId } from "../../shared/levels";
+import { isValidTtsVoice } from "../../shared/ttsVoices";
 
 const STORAGE_KEY = "engchat:settings:v1";
 
@@ -22,6 +23,8 @@ function readSettings(): AppSettings {
       modelKey: parsed.modelKey === "advanced" ? "advanced" : "basic",
       ttsRate: clampTtsRate(parsed.ttsRate),
       voiceURI: typeof parsed.voiceURI === "string" ? parsed.voiceURI : null,
+      useOpenAiTts: parsed.useOpenAiTts === true,
+      openAiVoice: isValidTtsVoice(parsed.openAiVoice) ? parsed.openAiVoice : DEFAULT_SETTINGS.openAiVoice,
     };
   } catch {
     return DEFAULT_SETTINGS;
